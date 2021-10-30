@@ -1,0 +1,46 @@
+version: "3.4"
+
+# logger driver - change this driver to ship all container logs to a different location
+x-logging:
+  &logging
+  logging:
+    driver: loki
+    options:
+      loki-url: "http://host.docker.internal:3100/loki/api/v1/push"
+
+services:
+  app:
+    image: blubb/loki-test:latest
+    init: true
+    build:
+      context: .
+    volumes:
+      - ./output.php:/app/output.php
+    logging:
+    << : *logging
+
+  loki:
+    image: grafana/loki:2.3.0
+    init: true
+    ports:
+      - "3100:3100"
+#    command: -config.file=/etc/loki/local-config.yaml
+#    volumes:
+#      - ./volumes/loki:/etc/loki
+    networks:
+      - logging_network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./volumes/grafana:/etc/grafana/provisioning/datasources
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    networks:
+      - logging_network
+
+networks:
+  logging_network:

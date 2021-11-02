@@ -1,12 +1,22 @@
-version: "3.4"
-
 # logger driver - change this driver to ship all container logs to a different location
 x-logging:
   &logging
-  logging:
     driver: loki
     options:
       loki-url: "http://host.docker.internal:3100/loki/api/v1/push"
+      loki-pipeline-stages: |
+        - regex:
+            expression: '\[.*\] .* (?P<msg_json>{.*} \[\] \[\])'
+        - labels:
+            msg_json:
+        #- template:
+        #    source: msg_json
+        #    template: '{{ Replace .Value "n" "------------------------------------" -1 }}'
+        #- template:
+        #    source: msg_json
+        #    template: '{{ Replace .Value "\\n\\n" "" -1 }}'
+        - output:
+            source: msg_json
 
 services:
   app:
@@ -16,8 +26,7 @@ services:
       context: .
     volumes:
       - ./output.php:/app/output.php
-    logging:
-    << : *logging
+    logging: *logging
 
   loki:
     image: grafana/loki:2.3.0
